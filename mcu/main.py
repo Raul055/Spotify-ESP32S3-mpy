@@ -1,7 +1,7 @@
 import gc
 import util.tft_config as tft_config
 import st7789
-import util.Noto_sans as font
+import Noto_sans as font
 import util.spotify as spotify
 import ujson as json
 import util.image_file as image_file

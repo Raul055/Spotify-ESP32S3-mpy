@@ -16,6 +16,9 @@ REDIRECT_URI = credentials["spotify"]["redirect_uri"]
 AUTHENTICATION_CODE = credentials["spotify"]["authentication_code"]
 ACCESS_TOKEN = credentials["spotify"]["access_token"]
 
+# Flags
+ALLOW_PRINTS = False
+
 # -- Spotify class for use
 class Spotify:
     # -- Init class
@@ -52,8 +55,9 @@ class Spotify:
         url = "https://accounts.spotify.com/api/token"
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
         data = "grant_type=refresh_token&refresh_token=" + self.access_token
-        print(self.get_auth_header())
-        print(self.access_token)
+        if ALLOW_PRINTS:    
+            print(self.get_auth_header())
+            print(self.access_token)
         response = post(url, headers=self.get_auth_header(), data=data)
         return response
     
@@ -68,11 +72,12 @@ class Spotify:
         # Check the GET request
         if response.status_code == 200:		# Status is good and current play is sent
             item = response.json()
-            print("Good 200")
+            if ALLOW_PRINTS:
+                print("Good 200: something is playing")
             self.item_response = item
             return item
         elif response.status_code == 204:	# Nothing is being sent
-            print("Good 204")
+            print("Good 204: nothing is being sent")
             return None
         else:								# Token expired or error
             print("Token expired or error")

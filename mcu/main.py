@@ -100,7 +100,7 @@ image_file.download_image(image_url, "cover.jpg")
 
 # enable display and clear screen
 tft_config.tft_display.init()
-tft_config.tft_display.jpg("cover.jpg", 10, 10, False)
+tft_config.tft_display.jpg("cover.jpg", 10, 10, True)
 # 320, 352, tft_
 
 clear_text_zone(tft_config.tft_display, st7789.BLACK)

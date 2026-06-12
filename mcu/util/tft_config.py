@@ -1,11 +1,10 @@
-"""Generic ESP32 with 128x128 7735 display"""
-
 from machine import Pin, SPI
 import st7789
 
 TFA = 1
 BFA = 3
 
+# -- Adjust to the tft display used
 WIDTH = 320
 HEIGHT = 480
 SCK_PIN = 39
@@ -15,6 +14,7 @@ DC_PIN = 42
 CS_PIN = 10
 BACKLIGHT_PIN = 9 
 
+# -- Available rotations
 AVAILABLE_ROTATIONS = [
     (0x00, WIDTH, HEIGHT, 0, 0),	# 0. Portrait
     (0x60, HEIGHT, WIDTH, 0, 0),	# 1. Landscape
@@ -27,8 +27,10 @@ AVAILABLE_ROTATIONS = [
     (0xE0, HEIGHT, WIDTH, 0, 0),	# 7. Inverted Landscape (Mirrored)
 ]
 
+# -- Select the correct rotation for your tft display
 ROTATION = 4
 
+# TFT used
 tft_display = st7789.ST7789(
         SPI(1, baudrate=30000000, sck=Pin(SCK_PIN), mosi=Pin(MOSI_PIN)),
         WIDTH,

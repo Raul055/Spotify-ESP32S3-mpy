@@ -2,6 +2,7 @@ import network
 import usys
 import ujson as json
 import time
+from util.debug import debug_print
 
 # Connect to WLAN
 def do_connect(timeout_seconds=15):
@@ -16,10 +17,10 @@ def do_connect(timeout_seconds=15):
     # WLAN is not connected
     if not wlan.isconnected():
         # Trying to connect to password
-        print('Connecting to network with given credentials...')
+        debug_print('Connecting to network with given credentials...')
         wlan.disconnect()
-        print(credentials["wifi"]["ssid"])
-        print(credentials["wifi"]["password"])
+        debug_print(credentials["wifi"]["ssid"])
+        debug_print(credentials["wifi"]["password"])
         wlan.connect(credentials["wifi"]["ssid"], credentials["wifi"]["password"])
         
         # Record the start time in milliseconds
@@ -28,14 +29,15 @@ def do_connect(timeout_seconds=15):
         # WLAN tries to connect in the given timeout
         while not wlan.isconnected():
             if time.ticks_diff(time.ticks_ms(), start_time) > (timeout_seconds * 1000):
-                print("Timeout reached and could not connect. Something went wrong :(")
+                debug_print("Timeout reached and could not connect. Something went wrong :(")
                 wlan.active(False)
-                usys.exit(0)
+                return False
             time.sleep(0.5)
                 
     # WLAN is fine, prints current network configuration
-    print('WLAN active: ', wlan.active())
-    print("IP address: ", wlan.ifconfig()[0])
+    debug_print('WLAN active: ', wlan.active())
+    debug_print("IP address: ", wlan.ifconfig()[0])
+    return True
 
 if __name__ == "__main__":
     

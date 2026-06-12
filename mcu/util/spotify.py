@@ -1,6 +1,7 @@
 import base64
 from urequests import post, get
 import ujson as json
+from util.debug import debug_print
 
 # -- CONSTANTS
 CREDENTIALS_JSON = "credentials.json"
@@ -15,9 +16,6 @@ CLIENT_SECRET = credentials["spotify"]["client_secret"]
 REDIRECT_URI = credentials["spotify"]["redirect_uri"]
 AUTHENTICATION_CODE = credentials["spotify"]["authentication_code"]
 ACCESS_TOKEN = credentials["spotify"]["access_token"]
-
-# Flags
-ALLOW_PRINTS = False
 
 # -- Spotify class for use
 class Spotify:
@@ -54,10 +52,9 @@ class Spotify:
     def refresh_access_token(self):
         url = "https://accounts.spotify.com/api/token"
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-        data = "grant_type=refresh_token&refresh_token=" + self.access_token
-        if ALLOW_PRINTS:    
-            print(self.get_auth_header())
-            print(self.access_token)
+        data = "grant_type=refresh_token&refresh_token=" + self.access_token   
+        debug_print(self.get_auth_header())
+        debug_print(self.access_token)
         response = post(url, headers=self.get_auth_header(), data=data)
         return response
     
@@ -72,15 +69,14 @@ class Spotify:
         # Check the GET request
         if response.status_code == 200:		# Status is good and current play is sent
             item = response.json()
-            if ALLOW_PRINTS:
-                print("Good 200: something is playing")
+            debug_print("Good 200: something is playing")
             self.item_response = item
             return item
         elif response.status_code == 204:	# Nothing is being sent
-            print("Good 204: nothing is being sent")
+            debug_print("Good 204: nothing is being sent")
             return None
         else:								# Token expired or error
-            print("Token expired or error")
+            debug_print("Token expired or error")
             return False
     
     # -- Get url image (300x300)
@@ -110,7 +106,7 @@ class Spotify:
         
         # Returns none if no url is in place
         except:
-            print("Cannot get the image url")
+            debug_print("Cannot get the image url")
             return None
     
     # -- Gets name
@@ -135,7 +131,7 @@ class Spotify:
         
         # Returns none if no name is in place
         except:
-            print("Cannot get the name")
+            debug_print("Cannot get the name")
             return None
         
     # -- Gets name
@@ -165,7 +161,7 @@ class Spotify:
         
         # Returns none if no name is in place
         except:
-            print("Cannot get the author or name's show")
+            debug_print("Cannot get the author or name's show")
             return None
     
     def refresh_access_token(self):
@@ -185,14 +181,14 @@ class Spotify:
             self.write_token_json(new_token)
             return True
         else:
-            print("Failed to refresh token:", response.status_code)
+            debug_print("Failed to refresh token:", response.status_code)
             return False
 
 if __name__ == "__main__":
     
     spotify_test = Spotify(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, AUTHENTICATION_CODE, ACCESS_TOKEN)
     spotify_test.refresh_access_token()
-    print(spotify_test.get_current_play())
+    debug_print(spotify_test.get_current_play())
 
 
     #print(spotify_test.search_for_artist("Rammstein"))

@@ -39,7 +39,7 @@ class Spotify:
     def write_token_json(self, token):
         # Reads json file
         with open(CREDENTIALS_JSON, "r") as f:
-            data = json.load
+            data = json.load(f)
         
         # Updates to new token
         data["spotify"]["access_token"] = token
@@ -162,10 +162,31 @@ class Spotify:
         except:
             print("Cannot get the author or name's show")
             return None
+    
+    def refresh_access_token(self):
+        url = "https://accounts.spotify.com/api/token"
+        auth_header = self.get_auth_header()
+        headers = {
+            "Authorization": auth_header["Authorization"],
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        data = "grant_type=refresh_token&refresh_token=" + self.access_token
+        
+        response = post(url, headers=headers, data=data)
+        
+        if response.status_code == 200:
+            new_token = response.json()["access_token"]
+            self.access_token = new_token
+            self.write_token_json(new_token)
+            return True
+        else:
+            print("Failed to refresh token:", response.status_code)
+            return False
 
 if __name__ == "__main__":
     
     spotify_test = Spotify(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, AUTHENTICATION_CODE, ACCESS_TOKEN)
+    spotify_test.refresh_access_token()
     print(spotify_test.get_current_play())
 
 

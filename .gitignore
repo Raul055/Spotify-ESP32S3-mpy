@@ -1,5 +1,7 @@
 .vscode
 .micropico
+.env
 .venv/
 __pycache__/
 *py[cod]
+spotify_esp32.code-workspace

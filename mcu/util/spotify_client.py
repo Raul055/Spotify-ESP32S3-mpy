@@ -28,7 +28,11 @@ class spotify_client:
 
         # Item response
         self.item_response = None
-    
+
+        # Image url & name
+        self.image_url = None
+        self.image_filename = "cover.jpg"
+
     # -- Debug print
     def debug_print(self, *args):
         if self.debug:
@@ -131,7 +135,8 @@ class spotify_client:
             # Returns none if not valid
             else:
                 url = None
-                
+
+            self.image_url = url
             return url
             
         # Something went wrong, error
@@ -197,6 +202,32 @@ class spotify_client:
         except Exception as e:
             self.error_handler(e)
 
+    # -- Downloads image into the MCU
+    def download_cover_image(self, url=None, filename=None):
+        # All good
+        try:
+            # Uses classes attributes as default
+            url = self.image_url if url is None else url
+            filename = self.image_filename if filename is None else filename
+
+            res = get(url)
+            # Image was received successfully
+            if res.status_code == 200:
+                with open(filename, "wb") as f:
+                    f.write(res.content)
+                res.close()
+                self.debug_print("Download complete")
+                return True
+
+            # Something went wrong with request
+            else:
+                self.debug_print("Download failed :(")
+                return False
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+
 if __name__ == "__main__":
     # ---------------------------- For testing ---------------------------- #
 
@@ -230,3 +261,4 @@ if __name__ == "__main__":
     print(f"Get current image url: {spotify_test.get_current_play_image_url()}")
     print(f"Get current play name: {spotify_test.get_current_play_name()}")
     print(f"Get current play author or show: {spotify_test.get_current_play_autor_or_show()}")
+    print(f"Image was downloaded: {spotify_test.download_cover_image()}")

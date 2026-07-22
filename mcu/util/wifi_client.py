@@ -3,7 +3,7 @@ import time
 import ujson as json
 
 # -- Wifi client for connect to WLAN
-class wifi_client():
+class wifi_client:
     def __init__(self,
                         ssid=None,
                         password=None,

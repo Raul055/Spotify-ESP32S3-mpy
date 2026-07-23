@@ -143,7 +143,7 @@ class process_handler:
 
         while True:
             self.get_current_song()
-            time.sleep(5)
+            time.sleep(2)
 
 if __name__ == "__main__":
     process_test = process_handler(debug=True)

@@ -33,6 +33,11 @@ class spotify_client:
         self.image_url = None
         self.image_filename = "cover.jpg"
 
+        # Play attributes
+        self.current_play_name = None
+        self.current_author_name = None
+        self.current_play_id = None
+
     # -- Debug print
     def debug_print(self, *args):
         if self.debug:
@@ -84,7 +89,7 @@ class spotify_client:
             self.error_handler(e)
     
     # -- Gets the current play
-    def get_current_play(self):
+    def get_current_play(self, retry=True):
         # All good
         try:
             # Do the API call to get the current call
@@ -95,20 +100,60 @@ class spotify_client:
             # Check the GET request
             if response.status_code == 200:		# Status is good and current play is sent
                 item = response.json()
+                response.close()
                 self.debug_print("Good 200: something is playing")
                 self.item_response = item
                 return item
             elif response.status_code == 204:	# Nothing is being sent
+                response.close()
                 self.debug_print("Good 204: nothing is being sent")
+                self.item_response = None
                 return None
-            else:								# Token expired or error
-                self.debug_print("Token expired or error")
+            elif response.status_code == 401 and retry:	# Unauthorized, token expired
+                response.close()
+                self.debug_print("401: Unauthorized: refreshing token...")
+
+                # Attempt to refresh token and retry once
+                if self.refresh_access_token():
+                    return self.get_current_play(retry=False)
+                return None
+            else:								# Error
+                response.close()
+                self.debug_print("Error")
                 return False
         
         # Something went wrong, error
         except Exception as e:
             self.error_handler(e)
     
+    # -- Gets the current play id
+    def get_current_play_id(self, item_response=None):
+        # All good
+        try:
+            # Uses item response by default
+            if item_response is None:
+                item_response = self.item_response
+            
+            # Default if None
+            if item_response is None:
+                self.current_play_id = None
+                return None
+
+            # Returns the current item
+            item = item_response.get("item")
+
+            # Nothing is being sent
+            if item is None:
+                return None
+
+            # Gets ID
+            id = item.get("id")
+            return id
+            
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+            
     # -- Get url image (300x300)
     def get_current_play_image_url(self, item_response=None):
         # All good
@@ -119,6 +164,7 @@ class spotify_client:
             
             # Default if None
             if item_response is None:
+                self.image_url = None
                 return None
 
             # Returns the current url
@@ -153,6 +199,7 @@ class spotify_client:
             
             # Default if None
             if item_response is None:
+                self.current_play_name = None
                 return None
             
             # Returns the item's name
@@ -162,7 +209,8 @@ class spotify_client:
             # Returns none if not valid
             else:
                 name = None
-                
+
+            self.current_play_name = name
             return name
         
         # Something went wrong, error
@@ -179,6 +227,7 @@ class spotify_client:
         
             # Default if None
             if item_response is None:
+                self.current_author_name = None
                 return None
 
             # Returns the author or name's show
@@ -195,7 +244,8 @@ class spotify_client:
             # Returns none if not valid
             else:
                 response = None
-                
+
+            self.current_author_name = response
             return response
         
         # Something went wrong, error
@@ -223,6 +273,42 @@ class spotify_client:
             else:
                 self.debug_print("Download failed :(")
                 return False
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+
+    # -- Handler for current play
+    def get_current_play_handler(self):
+        # All good
+        try:
+            # Gets what is currently playing
+            self.get_current_play()
+
+            # Gets the new id of what is currently playing
+            new_id = self.get_current_play_id()
+
+            # Nothing is being played
+            if new_id is None:
+                self.current_play_id = None
+                return "NO_PLAY", None, None
+
+            # ID is different, something else is playing and needs to be updated
+            if new_id != self.current_play_id:
+                # Updates the current play id
+                self.current_play_id = new_id
+
+                # Gets all song/show info
+                name = self.get_current_play_name()
+                author = self.get_current_play_autor_or_show()
+                self.get_current_play_image_url()
+                self.download_cover_image()
+
+                # Returns current name and author
+                return "CHANGED", name, author
+
+            # CUrrent song remains unchanged
+            return "UNCHANGED", None, None
 
         # Something went wrong, error
         except Exception as e:

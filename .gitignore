@@ -5,3 +5,4 @@
 __pycache__/
 *py[cod]
 spotify_esp32.code-workspace
+data.txt

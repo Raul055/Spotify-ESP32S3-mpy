@@ -3,7 +3,7 @@ import time
 import ujson as json
 
 # -- Wifi client for connect to WLAN
-class wifi_client:
+class wifi_handler:
     def __init__(self,
                         ssid=None,
                         password=None,
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     PASSWORD = credentials["wifi"]["password"]
 
     # Wifi client
-    wifi_test = wifi_client(
+    wifi_test = wifi_handler(
                             ssid=SSID,
                             password=PASSWORD,
                             debug=True

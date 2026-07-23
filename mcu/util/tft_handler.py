@@ -49,7 +49,7 @@ class tft_handler:
         self.rotation = rotation
 
         # ----------------------------- ZONE CONFIG VALUES ----------------------------- #
-        self.font_h       = 32
+        self.font_h       = 43
         self.zone_w       = 320
         self.zone_h       = 160
         self.zone_y       = 320

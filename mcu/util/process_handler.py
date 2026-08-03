@@ -102,6 +102,7 @@ class process_handler:
             # Cannot connect to wifi
             else:
                 self.tft_handler.draw_message("Cannot connect to the internet, sorry :(")
+                time.sleep(2)
                 return False
             
         # Something went wrong, error
@@ -129,7 +130,7 @@ class process_handler:
 
             # Unsupported state, error
             else:
-                self.tft_handler.draw_message("Something went wrong :()")
+                self.tft_handler.draw_message("Something went wrong :(")
             
         # Something went wrong, error
         except Exception as e:
@@ -137,13 +138,27 @@ class process_handler:
             
     # -- Main handler
     def main(self):
-        self.read_credentials()
-        self.create_handlers()
-        self.connect_to_wifi()
 
-        while True:
-            self.get_current_song()
-            time.sleep(2)
+        # First read credentials
+        if self.read_credentials():
+            # Then, create the handlers
+            if self.create_handlers():
+                # Connect to internet
+                if self.connect_to_wifi():
+                    # All good, get spotify
+                    while True:
+                        self.get_current_song()
+                        time.sleep(2)
+                else:
+                    # Internet error
+                    self.debug_print("Could not connect to wifi, sorry :(")
+                    self.tft_handler.draw_message("No connection, check WLAN or credentials")
+            else:
+                # Handler error
+                self.debug_print("Could not create handlers, sorry :(")
+        else:
+            # Credentials error
+            self.debug_print("Could not read credentials, sorry :(")
 
 if __name__ == "__main__":
     process_test = process_handler(debug=True)

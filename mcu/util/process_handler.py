@@ -28,6 +28,8 @@ class process_handler:
         # -- json file credentials
         self.credentials_json = "credentials.json"
 
+        # ------------------------ Flags ------------------------ #
+        self.nothing_playing_display_flag = None
         self.debug = debug
 
     # -- Debug print
@@ -55,10 +57,12 @@ class process_handler:
             self.spotify_client_secret = credentials["spotify"]["client_secret"]
             self.spotify_redirect_uri = credentials["spotify"]["redirect_uri"]
             self.spotify_refresh_token = credentials["spotify"]["refresh_token"]
+            return True
 
         # Something went wrong, error
         except Exception as e:
             self.error_handler(e)
+            return False
 
     # -- Creates handlers
     def create_handlers(self):
@@ -84,6 +88,7 @@ class process_handler:
         # Something went wrong, error
         except Exception as e:
             self.error_handler(e)
+            return False
 
     # -- Connect to wifi
     def connect_to_wifi(self):
@@ -108,6 +113,7 @@ class process_handler:
         # Something went wrong, error
         except Exception as e:
             self.error_handler(e)
+            return False
 
     # -- Gets current song
     def get_current_song(self):
@@ -118,11 +124,14 @@ class process_handler:
 
             # Song changed, update
             if status == "CHANGED":
+                self.nothing_playing_display_flag = False
                 self.tft_handler.draw_current_song(song_name=name, author=author)
 
             # There is nothing being played
             elif status == "NO_PLAY":
-                self.tft_handler.draw_message("Nothing is being played...")
+                if self.nothing_playing_display_flag != True:
+                    self.tft_handler.draw_message("Nothing is being played...")
+                self.nothing_playing_display_flag = True
 
             # Song remains the same, do nothing
             elif status == "UNCHANGED":
@@ -135,6 +144,7 @@ class process_handler:
         # Something went wrong, error
         except Exception as e:
             self.error_handler(e)
+            return False
             
     # -- Main handler
     def main(self):

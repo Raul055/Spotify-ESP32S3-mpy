@@ -1,4 +1,4 @@
-# Spotify ESP32-S3
+# Spotify ESP32-S3 | MicroPython
 
 This project is possible thanks to the [**st7789_mpy**](https://github.com/russhughes/st7789_mpy.git) library made by [**russhughes**](https://github.com/russhughes). This consist in a spotify kinda-like-widget app that runs into an ESP32-S3 and shows the your current play in a TFT-display using the spotify official API, written in **MicroPython**.
 

@@ -239,7 +239,8 @@ class spotify_client:
             
             # Response when the current play is a song
             elif item.get("album") is not None:
-                response = item_response["item"]["artists"][0]["name"]	# Gets the first artist
+                artists = item_response["item"]["artists"]	# Gets all artists
+                response = ", ".join(artist["name"] for artist in artists)
             
             # Returns none if not valid
             else:

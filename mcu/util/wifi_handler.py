@@ -1,6 +1,8 @@
 import network
+import socket
 import time
 import ujson as json
+import machine
 
 # -- Wifi client for connect to WLAN
 class wifi_handler:
@@ -13,6 +15,14 @@ class wifi_handler:
         # Credentials for WLAN
         self.ssid = ssid
         self.password = password
+
+        # For AP
+        self.ap = None
+        self.s = None
+        self.ip = None
+
+        # Credentials path
+        self.credentials = 'credentials.json'
 
         # For debugging
         self.debug = debug
@@ -64,6 +74,66 @@ class wifi_handler:
         except Exception as e:
             self.error_handler(e)
 
+    # -- Creates an ap portal for wifi credentials
+    def create_ap_portal(self):
+        try:
+            # Creates local server
+            self.ap = network.WLAN(network.AP_IF)
+            self.ap.active(True)
+            self.ap.config(essid="ESP32-Setup", password="") # No password
+
+            # Socket
+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s.bind(('', 80))
+            self.s.listen(1)
+
+            # IP
+            self.ip = self.ap.ifconfig()[0]
+            print(f"AP started, portal listening on {self.ip}")
+            return True
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+    
+    # -- Loads page
+    def load_page(self, path):
+        with open(path) as f:
+            return f.read()
+    
+    # -- Polls when a html request for wifi credentials is done
+    def ap_portal_polling(self):
+        # While True
+        while True:
+            # Connection
+            conn, addr = self.s.accept()
+            request = conn.recv(1024).decode()
+
+            # - Gets SSID and Password
+            if "GET /save" in request:
+                # Check params
+                params = request.split("GET /save?")[1].split(" ")[0]
+                kv = dict(p.split("=") for p in params.split("&"))
+                new_ssid = kv["ssid"]
+                new_pass = kv["pass"]
+
+                with open(self.credentials) as f:
+                    config = json.load(f)
+                config["wifi"]["ssid"] = new_ssid
+                config["wifi"]["password"] = new_pass
+                with open(self.credentials, "w") as f:
+                    json.dump(config, f)
+
+                conn.send("HTTP/1.1 200 OK\r\n\r\nSaved. Rebooting...")
+                conn.close()
+                machine.reset()
+            
+            # - Loads page
+            else:
+                html = self.load_page("html/ap_page.html")
+                conn.send("HTTP/1.1 200 OK\r\n\r\n" + html)
+                conn.close()
+
 if __name__ == "__main__":
     
     # ---------------------------- For testing ---------------------------- #
@@ -86,4 +156,8 @@ if __name__ == "__main__":
                       )
 
     # Check if wifi is connected
-    print(f"Connected: {wifi_test.do_connect()}")
+    if wifi_test.do_connect():
+        print(f"You are connected!")
+    else:
+        wifi_test.create_ap_portal()
+        wifi_test.ap_portal_polling()

@@ -106,8 +106,20 @@ class process_handler:
 
             # Cannot connect to wifi
             else:
-                self.tft_handler.draw_message("Cannot connect to the internet, sorry :(")
+                # No internet with current credentials
+                self.tft_handler.draw_message("Cannot connect to the internet, with the current credentials")
                 time.sleep(2)
+
+                # Creates AP portal to change SSID & Password
+                self.tft_handler.draw_message("Creating a AP portal...")
+                time.sleep(2)
+                self.wifi_handler.create_ap_portal()
+                self.tft_handler.draw_message(message=f"Connect to AP portal in 'ESP32-Setup' in {self.wifi_handler.ip} port")
+                
+                # Polls waiting for a response
+                self.wifi_handler.ap_portal_polling()
+                
+                # Returns False (normally shall not reach here)
                 return False
             
         # Something went wrong, error
@@ -146,29 +158,33 @@ class process_handler:
             self.error_handler(e)
             return False
             
-    # -- Main handler
-    def main(self):
-
+    # -- Boot handler
+    def boot(self):
         # First read credentials
-        if self.read_credentials():
-            # Then, create the handlers
-            if self.create_handlers():
-                # Connect to internet
-                if self.connect_to_wifi():
-                    # All good, get spotify
-                    while True:
-                        self.get_current_song()
-                        time.sleep(2)
-                else:
-                    # Internet error
-                    self.debug_print("Could not connect to wifi, sorry :(")
-                    self.tft_handler.draw_message("No connection, check WLAN or credentials")
-            else:
-                # Handler error
-                self.debug_print("Could not create handlers, sorry :(")
-        else:
+        if not self.read_credentials():
             # Credentials error
             self.debug_print("Could not read credentials, sorry :(")
+            return 1
+            
+        # Then, create the handlers
+        if not self.create_handlers():
+            # Handler error
+            self.debug_print("Could not create handlers, sorry :(")
+            return 1
+                
+        # Connect to internet
+        if self.connect_to_wifi():
+            # Internet error
+            self.debug_print("Could not connect to wifi, sorry :(")
+            self.tft_handler.draw_message("No connection, check WLAN or credentials")
+            return 1
+
+    # -- Main handler
+    def main(self):
+        # All good, get spotify
+        while True:
+            self.get_current_song()
+            time.sleep(2)
 
 if __name__ == "__main__":
     process_test = process_handler(debug=True)

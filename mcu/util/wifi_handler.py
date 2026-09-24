@@ -96,6 +96,19 @@ class wifi_handler:
         except Exception as e:
             self.error_handler(e)
     
+    # -- Gets current IP
+    def get_current_ip(self):
+        # All good
+        try:
+            sta = network.WLAN(network.STA_IF)
+            if sta.isconnected():
+                return sta.ifconfig()[0]
+            return None
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+
     # -- Loads page
     def load_page(self, path):
         with open(path) as f:
@@ -103,8 +116,11 @@ class wifi_handler:
     
     # -- Polls when a html request for wifi credentials is done
     def ap_portal_polling(self):
+        # Flag
+        wifi_credentials_sent = False
+        
         # While True
-        while True:
+        while not wifi_credentials_sent:
             # Connection
             conn, addr = self.s.accept()
             request = conn.recv(1024).decode()
@@ -117,6 +133,7 @@ class wifi_handler:
                 new_ssid = kv["ssid"]
                 new_pass = kv["pass"]
 
+                # Update credentials
                 with open(self.credentials) as f:
                     config = json.load(f)
                 config["wifi"]["ssid"] = new_ssid
@@ -124,9 +141,10 @@ class wifi_handler:
                 with open(self.credentials, "w") as f:
                     json.dump(config, f)
 
+                # Close connection
                 conn.send("HTTP/1.1 200 OK\r\n\r\nSaved. Rebooting...")
                 conn.close()
-                machine.reset()
+                return True
             
             # - Loads page
             else:

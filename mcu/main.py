@@ -1,3 +1,5 @@
-from boot import process
+from boot import process, BOOT_SUCCESS
 
-process.main()
+# Process main if boot is successful
+if BOOT_SUCCESS:
+    process.main()

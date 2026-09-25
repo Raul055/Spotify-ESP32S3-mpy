@@ -42,6 +42,16 @@ class process_handler:
         if self.debug:
             print(f"Error: {e}")    
 
+    # -- Error message with tft, needs reset
+    def display_error(self, message):
+        try:
+            self.tft_handler.draw_message(message=message, fg=self.tft_handler.display_colors["RED"])
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+            return False
+        
     # -- Reads credentials from json files
     def read_credentials(self):
         # All good
@@ -91,9 +101,10 @@ class process_handler:
             return False
 
     # -- Connect to wifi
-    def connect_to_wifi(self):
+    def connect_to_wifi(self, attempts=3):
         # All good
         try:
+            # -- Tries to connect from saved credentials
             # Connecting to internet message
             self.tft_handler.draw_message("Connecting to internet...")
             time.sleep(1)
@@ -104,23 +115,27 @@ class process_handler:
                 time.sleep(2)
                 return True
 
-            # Cannot connect to wifi
+            # -- Credentials are not good, try to update them
             else:
-                # No internet with current credentials
-                self.tft_handler.draw_message("Cannot connect to the internet, with the current credentials")
-                time.sleep(2)
+                for _ in range(attempts): 
+                    # No internet with current credentials
+                    self.tft_handler.draw_message("Cannot connect to the internet, with the current credentials")
+                    time.sleep(2)
 
-                # Creates AP portal to change SSID & Password
-                self.tft_handler.draw_message("Creating a AP portal...")
-                time.sleep(2)
-                self.wifi_handler.create_ap_portal()
-                self.tft_handler.draw_message(message=f"Connect to AP portal in 'ESP32-Setup' in {self.wifi_handler.ip} port")
-                
-                # Polls waiting for a response
-                self.wifi_handler.ap_portal_polling()
-                
-                # Returns False (normally shall not reach here)
-                return False
+                    # Creates AP portal to change SSID & Password
+                    self.tft_handler.draw_message("Creating a AP portal...")
+                    time.sleep(2)
+                    self.wifi_handler.create_ap_portal()
+                    self.tft_handler.draw_message(message=f"Connect to AP portal in 'ESP32-Setup' in {self.wifi_handler.ip} port")
+                    
+                    # Polls waiting for a response, try again
+                    if self.wifi_handler.ap_portal_polling():
+                        self.tft_handler.draw_message("Connecting to internet...")
+                        if self.wifi_handler.do_connect():
+                            return True
+
+            # Too many attempts, fail
+            return False
             
         # Something went wrong, error
         except Exception as e:
@@ -151,7 +166,7 @@ class process_handler:
 
             # Unsupported state, error
             else:
-                self.tft_handler.draw_message("Something went wrong :(")
+                self.display_error("Something went wrong :(")
             
         # Something went wrong, error
         except Exception as e:
@@ -164,23 +179,46 @@ class process_handler:
         if not self.read_credentials():
             # Credentials error
             self.debug_print("Could not read credentials, sorry :(")
-            return 1
+            return False
             
         # Then, create the handlers
         if not self.create_handlers():
             # Handler error
             self.debug_print("Could not create handlers, sorry :(")
-            return 1
-                
-        # Connect to internet
-        if self.connect_to_wifi():
-            # Internet error
-            self.debug_print("Could not connect to wifi, sorry :(")
-            self.tft_handler.draw_message("No connection, check WLAN or credentials")
-            return 1
+            return False
+
+        # All good
+        return True
 
     # -- Main handler
     def main(self):
+        # Connect to internet
+        if not self.connect_to_wifi():
+            # Internet error
+            self.debug_print("Could not connect to wifi, sorry :(")
+            time.sleep(2)
+            self.display_error("No connection, too many attempts :(")
+            return False
+        
+        # Refresh token is not valid
+        if not self.spotify_client.refresh_access_token():
+            self.tft_handler.draw_message("The current refresh token is expired, refresh it")
+            time.sleep(2)
+            self.tft_handler.draw_message("Creating a socket for updating credentials...")
+            time.sleep(2)
+            
+            # Creates the socket
+            if not self.spotify_client.create_socket():
+                # Socket could not be created, error
+                self.display_error("Something went wrong creating the socket :(")
+                return 1
+
+            # Checks for credentials
+            self.tft_handler.draw_message(f"The socket is created on ip: {self.wifi_handler.get_current_ip()} on port: {self.spotify_client.port}")
+            if not self.spotify_client.credential_polling():
+                self.display_error("The socket got an error waiting for response, sorry :(")
+            self.tft_handler.draw_message("Credentials updated!")
+        
         # All good, get spotify
         while True:
             self.get_current_song()

@@ -3,7 +3,7 @@ import webbrowser
 from urllib.parse import urlencode, urlparse, parse_qs
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 
 class spotify_handler():
     def __init__(self, debug=True):
@@ -55,7 +55,13 @@ class spotify_handler():
                     f.write(f"{key}={value}\n")
             
             self.debug_print(".env created!")
-        
+
+        # .env exists but keys shall be updated
+        if self.env_path.exists() and (env_key is not None):
+            for key, value in env_key.items():
+                if value:
+                    set_key(".env", key, value)
+
         # Loads .env file
         load_dotenv(self.env_path)
 

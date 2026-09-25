@@ -142,6 +142,26 @@ class process_handler:
             self.error_handler(e)
             return False
 
+    # -- Updates spotify credentials when changed via socket
+    def update_spotify_credentials(self):
+        # All good
+        try:
+            # Open credentials
+            with open(self.credentials_json) as credentials_json:
+                credentials = json.loads(credentials_json.read())
+        
+            # Pass new credentials to spotify handler
+            self.spotify_client.client_id = credentials["spotify"]["client_id"]
+            self.spotify_client.client_secret = credentials["spotify"]["client_secret"]
+            self.spotify_client.redirect_url = credentials["spotify"]["redirect_uri"]
+            self.spotify_client.refresh_token = credentials["spotify"]["refresh_token"]
+            return True
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+            return False
+    
     # -- Gets current song
     def get_current_song(self):
         # All good
@@ -211,13 +231,16 @@ class process_handler:
             if not self.spotify_client.create_socket():
                 # Socket could not be created, error
                 self.display_error("Something went wrong creating the socket :(")
-                return 1
+                return False
 
             # Checks for credentials
             self.tft_handler.draw_message(f"The socket is created on ip: {self.wifi_handler.get_current_ip()} on port: {self.spotify_client.port}")
             if not self.spotify_client.credential_polling():
                 self.display_error("The socket got an error waiting for response, sorry :(")
+                return False
             self.tft_handler.draw_message("Credentials updated!")
+            self.update_spotify_credentials()
+            time.sleep(2)
         
         # All good, get spotify
         while True:

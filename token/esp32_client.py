@@ -36,14 +36,4 @@ class esp32_handler():
             s.close()
 
 if __name__ == "__main__":
-
-    data = {
-        "spotify": {
-            "client_id": "8a57f6008e1245dca843b570eecdd337",
-            "client_secret": "fee1565ebfdd4b30a2f6904efdb683d1",
-            "redirect_uri": "https://example.org/callback",
-            "refresh_token": "AQDxkK8NGScDTL7I5SsFyW8m-xQ4c-bXDCf1ZVWSgYS8QYTpfU0zB-Tl7wZLBGjEfYGBMqh_BJW8wQr1plbJ-KdKfK7BnVNZoHcVvwP-pky92DxVXH0iZ1pMwdDVNY_KMrA"
-        }
-    }
-    handler = esp32_handler()
-    handler.push_to_device(device_ip='192.168.1.79', port=8080, values=data)
+    pass

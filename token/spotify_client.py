@@ -3,7 +3,7 @@ import webbrowser
 from urllib.parse import urlencode, urlparse, parse_qs
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 
 class spotify_handler():
     def __init__(self, debug=True):
@@ -32,7 +32,7 @@ class spotify_handler():
 
 
     # -- Handles ENV variables from .env file
-    def env_handler(self):
+    def env_handler(self, env_key=None):
 
         # Env does not exist, create one
         if not self.env_path.exists():
@@ -40,9 +40,14 @@ class spotify_handler():
             
             # Ask for inputs of each env key
             env_dict = {}  # Placeholder
-            for key in self.env_keys:
-                value = input(f"Enter {key}: ").strip()
-                env_dict[key] = value
+            # Env key is not passed, so it asks by default
+            if not env_key:
+                for key in self.env_keys:
+                    value = input(f"Enter {key}: ").strip()
+                    env_dict[key] = value
+            # env_key is given, pass the value
+            else:
+                env_dict = env_key
 
             # Creates the .env file and inputs all the env keys
             with open(self.env_path, "w") as f:
@@ -50,7 +55,13 @@ class spotify_handler():
                     f.write(f"{key}={value}\n")
             
             self.debug_print(".env created!")
-        
+
+        # .env exists but keys shall be updated
+        if self.env_path.exists() and (env_key is not None):
+            for key, value in env_key.items():
+                if value:
+                    set_key(".env", key, value)
+
         # Loads .env file
         load_dotenv(self.env_path)
 
@@ -73,8 +84,13 @@ class spotify_handler():
         webbrowser.open("https://accounts.spotify.com/authorize?" + params)
 
     # -- Gets token from authenticator URL
-    def get_tokens(self):
-        redirected = input("Paste the full redirect URL here: ").strip()
+    def get_tokens(self, redirect_url=None):
+        # Use input cmd
+        if not redirect_url:
+            redirected = input("Paste the full redirect URL here: ").strip()
+        # Pass url
+        else:
+            redirected = redirect_url
         code = parse_qs(urlparse(redirected).query)["code"][0]
 
         # Get tokens from code

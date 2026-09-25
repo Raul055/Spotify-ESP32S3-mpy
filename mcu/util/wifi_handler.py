@@ -77,6 +77,14 @@ class wifi_handler:
     # -- Creates an ap portal for wifi credentials
     def create_ap_portal(self):
         try:
+            # Socket was open & ap up
+            if self.s is not None:
+                try:
+                    self.s.close()
+                    self.ap.active(False)
+                except Exception:
+                    pass
+            
             # Creates local server
             self.ap = network.WLAN(network.AP_IF)
             self.ap.active(True)
@@ -84,6 +92,7 @@ class wifi_handler:
 
             # Socket
             self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.s.bind(('', 80))
             self.s.listen(1)
 
@@ -96,43 +105,88 @@ class wifi_handler:
         except Exception as e:
             self.error_handler(e)
     
+    # -- Gets current IP
+    def get_current_ip(self):
+        # All good
+        try:
+            sta = network.WLAN(network.STA_IF)
+            if sta.isconnected():
+                return sta.ifconfig()[0]
+            return None
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+
     # -- Loads page
     def load_page(self, path):
         with open(path) as f:
             return f.read()
     
     # -- Polls when a html request for wifi credentials is done
-    def ap_portal_polling(self):
-        # While True
-        while True:
-            # Connection
-            conn, addr = self.s.accept()
-            request = conn.recv(1024).decode()
+    def ap_portal_polling(self, timeout_seconds=180):
+        # Sets 120 seconds for timeout
+        self.s.settimeout(timeout_seconds)
+        
+        # Flag
+        wifi_credentials_sent = False
 
-            # - Gets SSID and Password
-            if "GET /save" in request:
-                # Check params
-                params = request.split("GET /save?")[1].split(" ")[0]
-                kv = dict(p.split("=") for p in params.split("&"))
-                new_ssid = kv["ssid"]
-                new_pass = kv["pass"]
+        try:    
+            # While True
+            while not wifi_credentials_sent:
+                # Connection
+                conn, addr = self.s.accept()
+                request = conn.recv(1024).decode()
 
-                with open(self.credentials) as f:
-                    config = json.load(f)
-                config["wifi"]["ssid"] = new_ssid
-                config["wifi"]["password"] = new_pass
-                with open(self.credentials, "w") as f:
-                    json.dump(config, f)
+                # - Gets SSID and Password
+                if "GET /save" in request:
+                    # Check params
+                    params = request.split("GET /save?")[1].split(" ")[0]
+                    kv = dict(p.split("=") for p in params.split("&"))
+                    new_ssid = kv["ssid"]
+                    new_pass = kv["pass"]
 
-                conn.send("HTTP/1.1 200 OK\r\n\r\nSaved. Rebooting...")
-                conn.close()
-                machine.reset()
-            
-            # - Loads page
-            else:
-                html = self.load_page("html/ap_page.html")
-                conn.send("HTTP/1.1 200 OK\r\n\r\n" + html)
-                conn.close()
+                    # Update credentials
+                    with open(self.credentials) as f:
+                        config = json.load(f)
+                    config["wifi"]["ssid"] = new_ssid
+                    config["wifi"]["password"] = new_pass
+                    with open(self.credentials, "w") as f:
+                        json.dump(config, f)
+
+                    # Uodates ssid and password
+                    self.ssid = new_ssid
+                    self.password = new_pass
+                    
+                    # Close connection
+                    conn.send("HTTP/1.1 200 OK\r\n\r\nSaved. Rebooting...")
+                    conn.close()
+
+                    # Updates flag
+                    wifi_credentials_sent = True
+
+                    return True
+                
+                # - Loads page
+                else:
+                    html = self.load_page("html/ap_page.html")
+                    conn.send("HTTP/1.1 200 OK\r\n\r\n" + html)
+                    conn.close()
+
+            return False
+
+        # Something went wrong, error
+        except OSError as e:
+            self.error_handler(e)
+            return False
+
+        # Close if something happens
+        finally:
+            try:
+                self.s.close()
+                self.ap.active(False)
+            except Exception:
+                pass
 
 if __name__ == "__main__":
     

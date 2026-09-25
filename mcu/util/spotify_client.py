@@ -1,6 +1,7 @@
-import base64
 from urequests import post, get
 import ujson as json
+import ubinascii
+import socket
 
 # -- Spotify class for use
 class spotify_client:
@@ -22,6 +23,13 @@ class spotify_client:
         self.access_token = access_token
         self.refresh_token = refresh_token
         self.scope = scope
+
+        # For socket
+        self.s = None
+        self.port = None
+
+        # Credentials path
+        self.credentials = 'credentials.json'
 
         # For debugging
         self.debug = debug
@@ -51,7 +59,8 @@ class spotify_client:
     # -- Authentcation header
     def get_auth_header(self):
         auth_str = f"{self.client_id}:{self.client_secret}"
-        return {"Authorization": f"Basic {base64.b64encode(auth_str.encode()).decode()}"}
+        encoded = ubinascii.b2a_base64(auth_str.encode()).decode().strip()
+        return {"Authorization": f"Basic {encoded}"}
     
     # -- Refresh access token, retunrns true if token refreshed, else false
     def refresh_access_token(self):
@@ -88,6 +97,65 @@ class spotify_client:
         except Exception as e:
             self.error_handler(e)
     
+    # -- Uploads current credentials into json
+    def update_credentials(self, new_credentials:dict):
+        # All good
+        try:
+            # Update credentials
+            with open(self.credentials) as f:
+                credentials = json.load(f)
+            credentials.update(new_credentials)
+            with open(self.credentials, "w") as f:
+                json.dump(credentials, f)
+
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+
+    # -- Creates a socket for credentials
+    def create_socket(self, port=8080):
+        # All good
+        try:
+            # Socket creation
+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.s.bind(('', port))
+            self.s.listen(1)
+            self.debug_print(f"Listening for token updates in port {port}")
+            self.port = port
+            return True
+        
+        # Something went wrong, error
+        except Exception as e:
+            self.error_handler(e)
+
+    # -- Polls waiting for credentials
+    def credential_polling(self):
+        # Flag
+        credentials_updated = False
+
+        # Checks while credentials are updated
+        while not credentials_updated:
+            conn, addr = self.s.accept()
+            try:
+                data = conn.recv(1024).decode()
+                new_values = json.loads(data)
+
+                with open(self.credentials) as f:
+                    config = json.load(f)
+                config.update(new_values)
+                with open(self.credentials, "w") as f:
+                    json.dump(config, f)
+                conn.send(b"OK")
+
+                # Updates flag
+                credentials_updated = True
+                return True
+            except Exception as e:
+                print("Update failed:", e)
+                conn.send(b"ERROR")
+            finally:
+                conn.close()
+
     # -- Gets the current play
     def get_current_play(self, retry=True):
         # All good
@@ -330,7 +398,6 @@ if __name__ == "__main__":
     CLIENT_SECRET = credentials["spotify"]["client_secret"]
     REDIRECT_URI = credentials["spotify"]["redirect_uri"]
     REFRESH_TOKEN = credentials["spotify"]["refresh_token"]
-    ACCESS_TOKEN = credentials["spotify"]["access_token"]
     
     # Spotify client
     spotify_test = spotify_client(
@@ -338,12 +405,11 @@ if __name__ == "__main__":
                                     client_secret=CLIENT_SECRET,
                                     redirect_url=REDIRECT_URI,
                                     refresh_token=REFRESH_TOKEN,
-                                    access_token=ACCESS_TOKEN,
                                     debug=True
                                  )
     
     # Saves for tests
-    print(f"Refresh token: {spotify_test.refresh_access_token()}")
+    print(f"Refresh access token: {spotify_test.refresh_access_token()}")
     print(f"Get current play: {spotify_test.get_current_play()}")
     print(f"Get current image url: {spotify_test.get_current_play_image_url()}")
     print(f"Get current play name: {spotify_test.get_current_play_name()}")
